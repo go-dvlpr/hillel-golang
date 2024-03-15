@@ -3,114 +3,167 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	datamodel "hillel_new/model"
+	"go.uber.org/zap"
+	"hillel_new/errs"
+	"log"
+	"math/big"
+	"net/http"
+
+	//"math/rand/v2"
+	//"math/rand/v2"
+	"crypto/rand"
 )
 
-//func main() {
-//TestFunction("2", "red", "green")
-
-//books := make(map[string]int)
-//books["book1"] = 100
-//books["book2"] = 200
-//books["book3"] = 300
-//
-//read(books)
-
-//defer func() {
-//	//r := recover()
-//	//if r != nil {
-//	//	fmt.Println("something 1")
-//	//}
-//
-//	if r := recover(); r != nil {
-//		fmt.Println("something")
-//	}
-//}()
-
-//a := []int{1, 2, 3}
-//fmt.Println(a[2])
-
-//bird := "sinichka"
-//if bird == "sinichka" {
-//	panic("bird is not sinichka")
-//}
-//
-//fmt.Println("after panic")
-
-//pet := Pet{
-//	name:  "dmytro",
-//	color: "red",
-//}
-//
-//pet2 := NewPet("alex", "white")
-//
-//fmt.Println(pet)
-//fmt.Println(pet2)
-
-//pet := new(Pet)
-//fmt.Println(pet)
-//var pet2 *Pet
-//fmt.Println(pet2)
-
-//	car := model.LegkovaAuto{Color: "blue"}
-//	fmt.Println(car)
-//	fmt.Println(model.Variable1)
-//	model.Hello()
-//
-//}
-
-//type Pet struct {
-//	name  string
-//	color string
-//}
-
-//func NewPet(name, color string) *Pet {
-//	return &Pet{
-//		name:  name,
-//		color: color,
-//	}
-//}
-
-//func read(books map[string]int) {
-//	book1, ok := books["book3"]
-//
-//	fmt.Println(ok)
-//	fmt.Println(book1)
-//}
-
-//func TestFunction(a string, color ...string) {
-//	for i, v := range color {
-//		fmt.Println(i, v)
-//	}
-//}
-
-func main() {
-	car := datamodel.Car{
-		Color: "yellow",
-		Size:  1,
-	}
-
-	fmt.Println(car)
-
-	car.Validate()
-
-	var sl = []int{1, 2, 3, 4}
-
-	element, err := GetElementFromSlice(sl, 5)
-	if err != nil {
-		logrus.Error("failed to get element from slice - ", err)
-		return
-	}
-
-	element++ //
+type Sleeper interface {
+	Sleep()
 }
 
-func GetElementFromSlice(sl []int, index int) (int, error) {
-	if len(sl)-1 < index {
-		return 0, errors.New("index out of range")
+type Human struct{}
+
+func (h Human) Sleep() {
+	fmt.Println("Human is sleeping right now")
+}
+
+type Pet struct{}
+
+func (h Pet) Sleep() {
+	fmt.Println("Pet is sleeping right now")
+}
+
+func GoToBed(sleeper Sleeper) {
+	sleeper.Sleep()
+}
+
+func GoToBedHuman(human Human) {
+	human.Sleep()
+}
+
+func GoToBedPet(pet Pet) {
+	pet.Sleep()
+}
+
+func H(w http.Request, r *http.Response) {
+
+}
+
+func main() {
+	logger, _ := zap.NewDevelopment()
+	logger.Info("congratulations, main was started")
+
+	animal, err := NewAnimal("")
+	if err != nil {
+		if errors.Is(err, errs.ErrEmptyName) {
+			//logger.Error("animal has empty name")
+			logger.Fatal("finish")
+			//return
+			//logger.Warn("animal has empty name")
+		}
+
+		log.Println("failed to create animal,", err)
+		//return
 	}
 
-	element := sl[index]
-	return element, nil
+	// debug
+	// info
+	// warning
+	// error
+	// fatal
+
+	//logger.Debug(fmt.Sprintf("animal has name %s", animal.Name))
+
+	log.Println("animal created successfuly, ", animal)
+
+	PrintSomething(1)
+	PrintSomething("test")
+	PrintSomething(false)
+	PrintSomething(animal)
+
+	PrintSomethingForRunner(animal)
+
+	human := Human{}
+	pet := Pet{}
+
+	GoToBedHuman(human)
+	GoToBedPet(pet)
+
+	GoToBed(human)
+	GoToBed(pet)
+
+	PrintInterfaceType(animal)
+}
+
+func PrintInterfaceType(something interface{}) {
+	// if string -> this is string
+	// if int -> this is int
+	// if Animal -> this is Animal
+
+	strSomething, ok := something.(string)
+	if ok {
+		fmt.Println("this is string", strSomething)
+	}
+
+	intSomething, ok := something.(int)
+	if ok {
+		fmt.Println("this is int", intSomething)
+	}
+
+	boolSomething, ok := something.(bool)
+	if ok {
+		fmt.Println("this is bool", boolSomething)
+	}
+
+	switch a := something.(type) {
+	case string:
+		fmt.Println("this is string again", a)
+	case int:
+		fmt.Println("this is int again", a)
+	case bool:
+		fmt.Println("this is bool again", a)
+	case *Animal:
+		fmt.Println("oooh shit this is animal", a)
+	}
+}
+
+type Runner interface {
+	RunFast() error
+}
+
+func PrintSomething(arg interface{}) {
+	fmt.Println(arg)
+}
+
+func PrintSomethingForRunner(arg Runner) {
+	fmt.Println(arg)
+}
+
+type Animal struct {
+	Name string
+}
+
+func NewAnimal(name string) (*Animal, error) {
+	if name == "" {
+		//err := fmt.Errorf("name is empty %d", 12223546)
+		//
+		//errorText := fmt.Sprintf("name is empty %d", 12223546)
+		//err = errors.New(errorText)
+		customErr := errs.ErrEmptyName
+
+		return nil, customErr
+	}
+
+	return &Animal{Name: name}, nil
+}
+
+func (a Animal) RunFast() error {
+	max := big.NewInt(1000)
+	randomNumber, _ := rand.Int(rand.Reader, max)
+	res := randomNumber.Int64() + 1000
+
+	if res > 1100 && res < 1800 {
+		return errors.New("something went wrong")
+	}
+
+	fmt.Println("RunFast called")
+
+	return nil
 }
